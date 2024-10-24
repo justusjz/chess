@@ -3,6 +3,7 @@
 #include <math.h>
 #include <SDL3/SDL.h>
 #include "board.h"
+#include "texture.h"
 
 #define WINDOW_SIZE 800
 #define SELECTOR_THICKNESS 5
@@ -22,6 +23,7 @@ int main(int argc, char *argv[])
   bool running = true;
   SDL_Window *window = SDL_CreateWindow("Chess", WINDOW_SIZE, WINDOW_SIZE, 0);
   SDL_Renderer *renderer = SDL_CreateRenderer(window, NULL);
+  SDL_Texture *move_texture = load_texture(renderer, "./assets/move.png");
   struct board board = board_init(renderer, 0, 0, WINDOW_SIZE, WINDOW_SIZE);
   bool selected = false;
   int selected_rank = 0;
@@ -77,6 +79,12 @@ int main(int argc, char *argv[])
     if (selected)
     {
       draw_selector(&board, selected_rank, selected_file);
+      struct move moves[32];
+      int move_count = board_get_moves(&board, selected_rank, selected_file, moves);
+      for (int i = 0; i < move_count; ++i)
+      {
+        board_draw_texture(&board, move_texture, moves[i].rank, moves[i].file);
+      }
     }
     SDL_RenderPresent(renderer);
   }

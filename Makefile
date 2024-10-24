@@ -1,5 +1,5 @@
 CC := gcc
 build:
-	$(CC) main.c board.c stb.c -lSDL3 -lm -o chess && ./chess
+	$(CC) main.c board.c texture.c -lSDL3 -lm -o chess && ./chess
 clean:
 	rm chess
