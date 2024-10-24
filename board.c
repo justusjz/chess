@@ -101,7 +101,47 @@ void board_draw(const struct board *board)
     }
   }
 }
-#include <stdio.h>
+
+void check_move_pawn(const struct board *board, int rank, int file, bool diagonal, struct piece piece, struct move *moves, int *move_count)
+{
+  // other pieces are handled by `check_move`
+  assert(piece.type == PIECE_PAWN);
+  if (rank < 0 || rank > 7 || file < 0 || file > 7)
+  {
+    // outside of playing area
+    return;
+  }
+  struct piece other_piece = board->squares[rank * BOARD_SIZE + file];
+  if (!diagonal && other_piece.type != PIECE_NONE)
+  {
+    // cannot move to square taken by another piece
+    return;
+  }
+  if (diagonal && (other_piece.type == PIECE_NONE || other_piece.color == piece.color))
+  {
+    // cannot move diagonally to empty square or capture a piece with the same color
+    return;
+  }
+  moves[(*move_count)++] = (struct move){rank, file};
+}
+
+void check_move(const struct board *board, int rank, int file, struct piece piece, struct move *moves, int *move_count)
+{
+  // pawns are handled by `check_move_pawn`
+  assert(piece.type != PIECE_PAWN);
+  if (rank < 0 || rank > 7 || file < 0 || file > 7)
+  {
+    // outside of playing area
+    return;
+  }
+  struct piece other_piece = board->squares[rank * BOARD_SIZE + file];
+  if (other_piece.type != PIECE_NONE && other_piece.color == piece.color)
+  {
+    // cannot move to square taken by piece of same color
+    return;
+  }
+  moves[(*move_count)++] = (struct move){rank, file};
+}
 
 int board_get_moves(const struct board *board, int rank, int file, struct move moves[32])
 {
@@ -112,25 +152,13 @@ int board_get_moves(const struct board *board, int rank, int file, struct move m
   {
     for (int i = 1; i <= rank; ++i)
     {
-      if (file - i >= 0)
-      {
-        moves[move_count++] = (struct move){rank - i, file - i};
-      }
-      if (file + i <= 7)
-      {
-        moves[move_count++] = (struct move){rank - i, file + i};
-      }
+      check_move(board, rank - i, file - i, piece, moves, &move_count);
+      check_move(board, rank - i, file + i, piece, moves, &move_count);
     }
     for (int i = 1; i < BOARD_SIZE - rank; ++i)
     {
-      if (file - i >= 0)
-      {
-        moves[move_count++] = (struct move){rank + i, file - i};
-      }
-      if (file + i <= 7)
-      {
-        moves[move_count++] = (struct move){rank + i, file + i};
-      }
+      check_move(board, rank + i, file - i, piece, moves, &move_count);
+      check_move(board, rank + i, file + i, piece, moves, &move_count);
     }
   }
   else if (piece.type == PIECE_KING)
@@ -139,10 +167,7 @@ int board_get_moves(const struct board *board, int rank, int file, struct move m
     {
       for (int j = -1; j <= 1; ++j)
       {
-        if (rank + i >= 0 && rank + i <= 7 && file + j >= 0 && file + j <= 7 && (i != 0 || j != 0))
-        {
-          moves[move_count++] = (struct move){rank + i, file + j};
-        }
+        check_move(board, rank + i, file + j, piece, moves, &move_count);
       }
     }
   }
@@ -161,88 +186,42 @@ int board_get_moves(const struct board *board, int rank, int file, struct move m
       int left_file = file - file_distance;
       int right_file = file + file_distance;
       int new_rank = rank + rank_distance;
-      if (new_rank >= 0 && new_rank <= 7 && left_file >= 0 && left_file <= 7)
-      {
-        moves[move_count++] = (struct move){rank + rank_distance, left_file};
-      }
-      if (new_rank >= 0 && new_rank <= 7 && right_file >= 0 && right_file <= 7)
-      {
-        moves[move_count++] = (struct move){rank + rank_distance, right_file};
-      }
+      check_move(board, new_rank, left_file, piece, moves, &move_count);
+      check_move(board, new_rank, right_file, piece, moves, &move_count);
     }
   }
   else if (piece.type == PIECE_PAWN)
   {
     int direction = piece.color == PIECE_WHITE ? -1 : 1;
-    int new_rank_1 = rank + direction;
-    int new_rank_2 = rank + 2 * direction;
-    if (new_rank_1 >= 0 && new_rank_1 <= 7)
-    {
-      moves[move_count++] = (struct move){new_rank_1, file};
-    }
-    if (new_rank_2 >= 0 && new_rank_2 <= 7)
-    {
-      moves[move_count++] = (struct move){new_rank_2, file};
-    }
+    check_move_pawn(board, rank + direction, file, false, piece, moves, &move_count);
+    check_move_pawn(board, rank + 2 * direction, file, false, piece, moves, &move_count);
+    check_move_pawn(board, rank + direction, file - 1, true, piece, moves, &move_count);
+    check_move_pawn(board, rank + direction, file + 1, true, piece, moves, &move_count);
   }
   else if (piece.type == PIECE_QUEEN)
   {
     for (int i = 1; i <= rank; ++i)
     {
-      if (file - i >= 0)
-      {
-        moves[move_count++] = (struct move){rank - i, file - i};
-      }
-      if (file + i <= 7)
-      {
-        moves[move_count++] = (struct move){rank - i, file + i};
-      }
+      check_move(board, rank - i, file - i, piece, moves, &move_count);
+      check_move(board, rank - i, file + i, piece, moves, &move_count);
     }
     for (int i = 1; i < BOARD_SIZE - rank; ++i)
     {
-      if (file - i >= 0)
-      {
-        moves[move_count++] = (struct move){rank + i, file - i};
-      }
-      if (file + i <= 7)
-      {
-        moves[move_count++] = (struct move){rank + i, file + i};
-      }
+      check_move(board, rank + i, file - i, piece, moves, &move_count);
+      check_move(board, rank + i, file + i, piece, moves, &move_count);
     }
     for (int i = 0; i < BOARD_SIZE; ++i)
     {
-      if (i == rank)
-      {
-        continue;
-      }
-      moves[move_count++] = (struct move){i, file};
-    }
-    for (int i = 0; i < BOARD_SIZE; ++i)
-    {
-      if (i == file)
-      {
-        continue;
-      }
-      moves[move_count++] = (struct move){rank, i};
+      check_move(board, i, file, piece, moves, &move_count);
+      check_move(board, rank, i, piece, moves, &move_count);
     }
   }
   else if (piece.type == PIECE_ROOK)
   {
     for (int i = 0; i < BOARD_SIZE; ++i)
     {
-      if (i == rank)
-      {
-        continue;
-      }
-      moves[move_count++] = (struct move){i, file};
-    }
-    for (int i = 0; i < BOARD_SIZE; ++i)
-    {
-      if (i == file)
-      {
-        continue;
-      }
-      moves[move_count++] = (struct move){rank, i};
+      check_move(board, i, file, piece, moves, &move_count);
+      check_move(board, rank, i, piece, moves, &move_count);
     }
   }
   return move_count;
