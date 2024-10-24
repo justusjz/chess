@@ -32,27 +32,41 @@ struct board board_init(SDL_Renderer *renderer, int x, int y, int width, int hei
   for (int file = 0; file < BOARD_SIZE; ++file)
   {
     board.squares[BOARD_SIZE + file] = (struct piece){PIECE_WHITE, PIECE_PAWN};
+    board.squares[6 * BOARD_SIZE + file] = (struct piece){PIECE_BLACK, PIECE_PAWN};
   }
-  for (int rank = 2; rank < BOARD_SIZE; ++rank)
+  for (int rank = 2; rank < 6; ++rank)
   {
     for (int file = 0; file < BOARD_SIZE; ++file)
     {
       board.squares[rank * BOARD_SIZE + file] = (struct piece){PIECE_WHITE, PIECE_NONE};
     }
   }
+  board.squares[7 * BOARD_SIZE] = (struct piece){PIECE_BLACK, PIECE_ROOK};
+  board.squares[7 * BOARD_SIZE + 1] = (struct piece){PIECE_BLACK, PIECE_KNIGHT};
+  board.squares[7 * BOARD_SIZE + 2] = (struct piece){PIECE_BLACK, PIECE_BISHOP};
+  board.squares[7 * BOARD_SIZE + 3] = (struct piece){PIECE_BLACK, PIECE_QUEEN};
+  board.squares[7 * BOARD_SIZE + 4] = (struct piece){PIECE_BLACK, PIECE_KING};
+  board.squares[7 * BOARD_SIZE + 5] = (struct piece){PIECE_BLACK, PIECE_BISHOP};
+  board.squares[7 * BOARD_SIZE + 6] = (struct piece){PIECE_BLACK, PIECE_KNIGHT};
+  board.squares[7 * BOARD_SIZE + 7] = (struct piece){PIECE_BLACK, PIECE_ROOK};
   board.textures[0] = load_texture(renderer, "./assets/white/bishop.png");
   board.textures[1] = load_texture(renderer, "./assets/white/king.png");
   board.textures[2] = load_texture(renderer, "./assets/white/knight.png");
   board.textures[3] = load_texture(renderer, "./assets/white/pawn.png");
   board.textures[4] = load_texture(renderer, "./assets/white/queen.png");
   board.textures[5] = load_texture(renderer, "./assets/white/rook.png");
+  board.textures[6] = load_texture(renderer, "./assets/black/bishop.png");
+  board.textures[7] = load_texture(renderer, "./assets/black/king.png");
+  board.textures[8] = load_texture(renderer, "./assets/black/knight.png");
+  board.textures[9] = load_texture(renderer, "./assets/black/pawn.png");
+  board.textures[10] = load_texture(renderer, "./assets/black/queen.png");
+  board.textures[11] = load_texture(renderer, "./assets/black/rook.png");
   return board;
 }
 
 void board_free(struct board *board)
 {
-  // TODO: also free black textures once available
-  for (int i = 0; i < 6; ++i)
+  for (int i = 0; i < 12; ++i)
   {
     SDL_DestroyTexture(board->textures[i]);
   }
@@ -61,11 +75,6 @@ void board_free(struct board *board)
 void draw_piece(const struct board *board, struct piece piece, int rank, int file)
 {
   SDL_Texture *texture = board->textures[piece.color * 6 + piece.type];
-  if (piece.color == PIECE_BLACK)
-  {
-    // TODO: add black textures
-    return;
-  }
   SDL_FRect dest;
   dest.x = board->x + file * board->square_width;
   dest.y = board->y + rank * board->square_height;
