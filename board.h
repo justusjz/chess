@@ -39,10 +39,17 @@ struct board
   SDL_Texture *piece_textures[12];
 };
 
+enum move_type
+{
+  MOVE_NORMAL,
+  MOVE_CAPTURE,
+};
+
 struct move
 {
   int rank;
   int file;
+  enum move_type type;
 };
 
 struct board board_init(SDL_Renderer *renderer, int x, int y, int width, int height);

@@ -112,18 +112,19 @@ bool check_move_pawn(const struct board *board, int rank, int file, bool diagona
     return false;
   }
   struct piece other_piece = board->squares[rank * BOARD_SIZE + file];
-  if (!diagonal && other_piece.type != PIECE_NONE)
+  if (!diagonal && other_piece.type == PIECE_NONE)
   {
-    // cannot move to square taken by another piece
+    // move straight to an empty square
+    moves[(*move_count)++] = (struct move){rank, file, MOVE_NORMAL};
+    return true;
+  }
+  if (diagonal && other_piece.type != PIECE_NONE && other_piece.color != piece.color)
+  {
+    // capture another piece diagonally
+    moves[(*move_count)++] = (struct move){rank, file, MOVE_CAPTURE};
     return false;
   }
-  if (diagonal && (other_piece.type == PIECE_NONE || other_piece.color == piece.color))
-  {
-    // cannot move diagonally to empty square or capture a piece with the same color
-    return false;
-  }
-  moves[(*move_count)++] = (struct move){rank, file};
-  return true;
+  return false;
 }
 
 bool check_move(const struct board *board, int rank, int file, struct piece piece, struct move *moves, int *move_count)
@@ -136,18 +137,19 @@ bool check_move(const struct board *board, int rank, int file, struct piece piec
     return false;
   }
   struct piece other_piece = board->squares[rank * BOARD_SIZE + file];
-  if (other_piece.type != PIECE_NONE && other_piece.color == piece.color)
+  if (other_piece.type == PIECE_NONE)
   {
-    // cannot move to square taken by piece of same color
+    // move to an empty square
+    moves[(*move_count)++] = (struct move){rank, file, MOVE_NORMAL};
+    return true;
+  }
+  if (other_piece.color != piece.color)
+  {
+    // capture another piece
+    moves[(*move_count)++] = (struct move){rank, file, MOVE_CAPTURE};
     return false;
   }
-  moves[(*move_count)++] = (struct move){rank, file};
-  if (other_piece.type != PIECE_NONE)
-  {
-    // we can capture this piece, but we can't continue afterwards
-    return false;
-  }
-  return true;
+  return false;
 }
 
 void get_straight_moves(const struct board *board, int rank, int file, struct piece piece, struct move moves[32], int *move_count)
