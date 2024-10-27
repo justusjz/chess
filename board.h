@@ -70,4 +70,6 @@ int board_get_moves(const struct board *board, int rank, int file, struct move m
 void board_make_move(struct board *board, const struct move *move);
 void board_unmake_move(struct board *board, const struct move *move);
 
+bool board_in_check(const struct board *board, enum piece_color color);
+
 #endif

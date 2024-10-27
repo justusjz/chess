@@ -136,6 +136,10 @@ int main(int argc, char *argv[])
         board_make_move(&board, move);
         selected = false;
         current_player = current_player == PIECE_WHITE ? PIECE_BLACK : PIECE_WHITE;
+        if (board_in_check(&board, current_player))
+        {
+          printf("Current color is in check!\n");
+        }
         break;
       }
     }

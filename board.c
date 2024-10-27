@@ -317,3 +317,30 @@ void board_make_move(struct board *board, const struct move *move)
     board->squares[(move->to_rank - direction) * 8 + move->to_file] = (struct piece){PIECE_WHITE, PIECE_NONE};
   }
 }
+
+bool board_in_check(const struct board *board, enum piece_color color)
+{
+  enum piece_color other_color = color == PIECE_WHITE ? PIECE_BLACK : PIECE_WHITE;
+  for (int rank = 0; rank < 8; ++rank)
+  {
+    for (int file = 0; file < 8; ++file)
+    {
+      struct piece piece = board->squares[rank * 8 + file];
+      if (piece.type != PIECE_NONE && piece.color == other_color)
+      {
+        // found piece of other color, check whether it attacks our king
+        struct move moves[32];
+        int move_count = board_get_moves(board, rank, file, moves);
+        for (int i = 0; i < move_count; ++i)
+        {
+          if (moves[i].captured.type == PIECE_KING)
+          {
+            // move would capture our king, so we're in check
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
