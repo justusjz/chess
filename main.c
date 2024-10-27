@@ -99,32 +99,31 @@ int main(int argc, char *argv[])
         }
         struct move moves[32];
         int move_count = board_get_moves(&board, selected_rank, selected_file, moves);
-        bool success = false;
+        const struct move *move = NULL;
         for (int i = 0; i < move_count; ++i)
         {
-          if (moves[i].rank == rank && moves[i].file == file)
+          if (moves[i].to_rank == rank && moves[i].to_file == file)
           {
-            if (moves[i].type == MOVE_NORMAL)
-            {
-              play_sound(&move_sound);
-            }
-            else
-            {
-              play_sound(&capture_sound);
-            }
-            success = true;
+
+            move = &moves[i];
             break;
           }
         }
-        if (!success)
+        if (move == NULL)
         {
           // not a valid move
           break;
         }
+        if (move->type == MOVE_CAPTURE || move->type == MOVE_EN_PASSANT)
+        {
+          play_sound(&capture_sound);
+        }
+        else
+        {
+          play_sound(&move_sound);
+        }
         // move piece to new location
-        struct piece piece = board.squares[selected_rank * BOARD_SIZE + selected_file];
-        board.squares[selected_rank * BOARD_SIZE + selected_file] = (struct piece){PIECE_WHITE, PIECE_NONE};
-        board.squares[rank * BOARD_SIZE + file] = piece;
+        board_make_move(&board, move);
         selected = false;
         current_player = current_player == PIECE_WHITE ? PIECE_BLACK : PIECE_WHITE;
         break;
@@ -140,7 +139,7 @@ int main(int argc, char *argv[])
       int move_count = board_get_moves(&board, selected_rank, selected_file, moves);
       for (int i = 0; i < move_count; ++i)
       {
-        board_draw_texture(&board, move_texture, moves[i].rank, moves[i].file);
+        board_draw_texture(&board, move_texture, moves[i].to_rank, moves[i].to_file);
       }
     }
     SDL_RenderPresent(renderer);
