@@ -111,7 +111,17 @@ int main(int argc, char *argv[])
         }
         if (move == NULL)
         {
-          // not a valid move
+          // not a valid move, try selecting
+          struct piece piece = board.squares[rank * BOARD_SIZE + file];
+          if (piece.type == PIECE_NONE || piece.color != current_player)
+          {
+            // cannot select empty square or opponent piece
+            break;
+          }
+          // select piece
+          selected = true;
+          selected_rank = rank;
+          selected_file = file;
           break;
         }
         if (move->type == MOVE_CAPTURE || move->type == MOVE_EN_PASSANT)
