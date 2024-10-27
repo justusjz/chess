@@ -12,6 +12,7 @@ struct board board_init(SDL_Renderer *renderer, int x, int y, int width, int hei
   board.square_width = width / BOARD_SIZE;
   board.square_height = height / BOARD_SIZE;
   board.en_passant_possible = false;
+  board.current_color = PIECE_WHITE;
   board.squares[0] = (struct piece){PIECE_BLACK, PIECE_ROOK};
   board.squares[1] = (struct piece){PIECE_BLACK, PIECE_KNIGHT};
   board.squares[2] = (struct piece){PIECE_BLACK, PIECE_BISHOP};
@@ -116,20 +117,20 @@ bool check_move_pawn(const struct board *board, int from_rank, int from_file, in
   if (!diagonal && other_piece.type == PIECE_NONE)
   {
     // move straight to an empty square
-    moves[(*move_count)++] = (struct move){from_rank, from_file, to_rank, to_file, type, other_piece};
+    moves[(*move_count)++] = (struct move){from_rank, from_file, to_rank, to_file, type, other_piece, board->en_passant_possible, board->en_passant_rank, board->en_passant_file};
     // we can move through this
     return true;
   }
   if (diagonal && other_piece.type != PIECE_NONE && other_piece.color != piece.color)
   {
     // capture another piece diagonally
-    moves[(*move_count)++] = (struct move){from_rank, from_file, to_rank, to_file, MOVE_CAPTURE, other_piece};
+    moves[(*move_count)++] = (struct move){from_rank, from_file, to_rank, to_file, MOVE_CAPTURE, other_piece, board->en_passant_possible, board->en_passant_rank, board->en_passant_file};
     return false;
   }
   if (diagonal && board->en_passant_possible && to_rank == board->en_passant_rank && to_file == board->en_passant_file)
   {
     // capture other pawn en passant
-    moves[(*move_count)++] = (struct move){from_rank, from_file, to_rank, to_file, MOVE_EN_PASSANT, other_piece};
+    moves[(*move_count)++] = (struct move){from_rank, from_file, to_rank, to_file, MOVE_EN_PASSANT, other_piece, board->en_passant_possible, board->en_passant_rank, board->en_passant_file};
   }
   return false;
 }
@@ -147,14 +148,14 @@ bool check_move(const struct board *board, int from_rank, int from_file, int to_
   if (other_piece.type == PIECE_NONE)
   {
     // move to an empty square
-    moves[(*move_count)++] = (struct move){from_rank, from_file, to_rank, to_file, MOVE_NORMAL, other_piece};
+    moves[(*move_count)++] = (struct move){from_rank, from_file, to_rank, to_file, MOVE_NORMAL, other_piece, board->en_passant_possible, board->en_passant_rank, board->en_passant_file};
     // we can move through this square
     return true;
   }
   if (other_piece.color != piece.color)
   {
     // capture another piece
-    moves[(*move_count)++] = (struct move){from_rank, from_file, to_rank, to_file, MOVE_CAPTURE, other_piece};
+    moves[(*move_count)++] = (struct move){from_rank, from_file, to_rank, to_file, MOVE_CAPTURE, other_piece, board->en_passant_possible, board->en_passant_rank, board->en_passant_file};
     // we cannot move through this square
     return false;
   }
@@ -316,6 +317,23 @@ void board_make_move(struct board *board, const struct move *move)
   {
     board->squares[(move->to_rank - direction) * 8 + move->to_file] = (struct piece){PIECE_WHITE, PIECE_NONE};
   }
+  board->current_color = board->current_color == PIECE_WHITE ? PIECE_BLACK : PIECE_WHITE;
+}
+
+void board_unmake_move(struct board *board, const struct move *move)
+{
+  struct piece moved = board->squares[move->to_rank * 8 + move->to_file];
+  int direction = moved.color == PIECE_WHITE ? -1 : 1;
+  board->squares[move->from_rank * 8 + move->from_file] = moved;
+  board->squares[move->to_rank * 8 + move->to_file] = move->captured;
+  if (move->type == MOVE_EN_PASSANT)
+  {
+    board->squares[(move->to_rank - direction) * 8 + move->to_file] = (struct piece){moved.color == PIECE_WHITE ? PIECE_BLACK : PIECE_WHITE, PIECE_PAWN};
+  }
+  board->current_color = board->current_color == PIECE_WHITE ? PIECE_BLACK : PIECE_WHITE;
+  board->en_passant_possible = move->previous_en_passant_possible;
+  board->en_passant_rank = move->previous_en_passant_rank;
+  board->en_passant_file = move->previous_en_passant_file;
 }
 
 bool board_in_check(const struct board *board, enum piece_color color)
@@ -343,4 +361,57 @@ bool board_in_check(const struct board *board, enum piece_color color)
     }
   }
   return false;
+}
+
+bool are_moves_possible(struct board *board, enum piece_color color)
+{
+  for (int rank = 0; rank < 8; ++rank)
+  {
+    for (int file = 0; file < 8; ++file)
+    {
+      struct piece piece = board->squares[rank * 8 + file];
+      if (piece.type == PIECE_NONE || piece.color != color)
+      {
+        continue;
+      }
+      struct move moves[32];
+      int move_count = board_get_legal_moves(board, rank, file, moves);
+      if (move_count > 0)
+      {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+enum game_state board_status(struct board *board, enum piece_color color)
+{
+  if (are_moves_possible(board, color))
+  {
+    return STATE_OK;
+  }
+  if (board_in_check(board, color))
+  {
+    return STATE_MATE;
+  }
+  return STATE_DRAW;
+}
+
+int board_get_legal_moves(struct board *board, int rank, int file, struct move moves[32])
+{
+  struct move pseudo_moves[32];
+  enum piece_color current_color = board->squares[rank * 8 + file].color;
+  int pseudo_move_count = board_get_moves(board, rank, file, pseudo_moves);
+  int move_count = 0;
+  for (int i = 0; i < pseudo_move_count; ++i)
+  {
+    board_make_move(board, &pseudo_moves[i]);
+    if (!board_in_check(board, current_color))
+    {
+      moves[move_count++] = pseudo_moves[i];
+    }
+    board_unmake_move(board, &pseudo_moves[i]);
+  }
+  return move_count;
 }

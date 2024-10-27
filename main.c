@@ -62,8 +62,9 @@ int main(int argc, char *argv[])
   bool selected = false;
   int selected_rank = 0;
   int selected_file = 0;
-  // white begins
-  int current_player = PIECE_WHITE;
+  struct move move_history[256];
+  int last_move = 0;
+  bool ended = false;
   while (running)
   {
     SDL_Event event;
@@ -74,13 +75,24 @@ int main(int argc, char *argv[])
       case SDL_EVENT_QUIT:
         running = false;
         break;
+      case SDL_EVENT_KEY_DOWN:
+        if (event.key.key == SDLK_U && last_move > 0)
+        {
+          ended = false;
+          board_unmake_move(&board, &move_history[--last_move]);
+        }
+        break;
       case SDL_EVENT_MOUSE_BUTTON_UP:
+        if (ended)
+        {
+          break;
+        }
         int rank = board_get_rank(&board, event.button.y);
         int file = board_get_rank(&board, event.button.x);
         if (!selected)
         {
           struct piece piece = board.squares[rank * BOARD_SIZE + file];
-          if (piece.type == PIECE_NONE || piece.color != current_player)
+          if (piece.type == PIECE_NONE || piece.color != board.current_color)
           {
             // cannot select empty square or opponent piece
             break;
@@ -98,7 +110,7 @@ int main(int argc, char *argv[])
           break;
         }
         struct move moves[32];
-        int move_count = board_get_moves(&board, selected_rank, selected_file, moves);
+        int move_count = board_get_legal_moves(&board, selected_rank, selected_file, moves);
         const struct move *move = NULL;
         for (int i = 0; i < move_count; ++i)
         {
@@ -113,7 +125,7 @@ int main(int argc, char *argv[])
         {
           // not a valid move, try selecting
           struct piece piece = board.squares[rank * BOARD_SIZE + file];
-          if (piece.type == PIECE_NONE || piece.color != current_player)
+          if (piece.type == PIECE_NONE || piece.color != board.current_color)
           {
             // cannot select empty square or opponent piece
             break;
@@ -133,12 +145,26 @@ int main(int argc, char *argv[])
           play_sound(&move_sound);
         }
         // move piece to new location
+        move_history[last_move++] = *move;
         board_make_move(&board, move);
         selected = false;
-        current_player = current_player == PIECE_WHITE ? PIECE_BLACK : PIECE_WHITE;
-        if (board_in_check(&board, current_player))
+        enum game_state status = board_status(&board, board.current_color);
+        if (status == STATE_MATE)
         {
-          printf("Current color is in check!\n");
+          if (board.current_color == PIECE_WHITE)
+          {
+            printf("Black won!\n");
+          }
+          else
+          {
+            printf("White won!\n");
+          }
+          ended = true;
+        }
+        else if (status == STATE_DRAW)
+        {
+          printf("Draw!\n");
+          ended = true;
         }
         break;
       }
@@ -150,7 +176,7 @@ int main(int argc, char *argv[])
     {
       draw_selector(&board, selected_rank, selected_file);
       struct move moves[32];
-      int move_count = board_get_moves(&board, selected_rank, selected_file, moves);
+      int move_count = board_get_legal_moves(&board, selected_rank, selected_file, moves);
       for (int i = 0; i < move_count; ++i)
       {
         board_draw_texture(&board, move_texture, moves[i].to_rank, moves[i].to_file);

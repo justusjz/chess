@@ -41,6 +41,7 @@ struct board
   bool en_passant_possible;
   int en_passant_rank;
   int en_passant_file;
+  enum piece_color current_color;
 };
 
 enum move_type
@@ -59,6 +60,16 @@ struct move
   int to_file;
   enum move_type type;
   struct piece captured;
+  bool previous_en_passant_possible;
+  int previous_en_passant_rank;
+  int previous_en_passant_file;
+};
+
+enum game_state
+{
+  STATE_OK,
+  STATE_MATE,
+  STATE_DRAW,
 };
 
 struct board board_init(SDL_Renderer *renderer, int x, int y, int width, int height);
@@ -71,5 +82,8 @@ void board_make_move(struct board *board, const struct move *move);
 void board_unmake_move(struct board *board, const struct move *move);
 
 bool board_in_check(const struct board *board, enum piece_color color);
+enum game_state board_status(struct board *board, enum piece_color color);
+
+int board_get_legal_moves(struct board *board, int rank, int file, struct move moves[32]);
 
 #endif
