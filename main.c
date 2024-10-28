@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
+#include <stdlib.h>
 #include <SDL3/SDL.h>
 #include "board.h"
 #include "texture.h"
@@ -62,9 +63,22 @@ int main(int argc, char *argv[])
   bool selected = false;
   int selected_rank = 0;
   int selected_file = 0;
-  struct move move_history[256];
-  int last_move = 0;
+  struct board *board_history = malloc(sizeof(struct board) * 256);
+  int last_board = 0;
   bool ended = false;
+  SDL_Texture *piece_textures[12];
+  piece_textures[0] = load_texture(renderer, "./assets/white/bishop.png");
+  piece_textures[1] = load_texture(renderer, "./assets/white/king.png");
+  piece_textures[2] = load_texture(renderer, "./assets/white/knight.png");
+  piece_textures[3] = load_texture(renderer, "./assets/white/pawn.png");
+  piece_textures[4] = load_texture(renderer, "./assets/white/queen.png");
+  piece_textures[5] = load_texture(renderer, "./assets/white/rook.png");
+  piece_textures[6] = load_texture(renderer, "./assets/black/bishop.png");
+  piece_textures[7] = load_texture(renderer, "./assets/black/king.png");
+  piece_textures[8] = load_texture(renderer, "./assets/black/knight.png");
+  piece_textures[9] = load_texture(renderer, "./assets/black/pawn.png");
+  piece_textures[10] = load_texture(renderer, "./assets/black/queen.png");
+  piece_textures[11] = load_texture(renderer, "./assets/black/rook.png");
   while (running)
   {
     SDL_Event event;
@@ -76,10 +90,10 @@ int main(int argc, char *argv[])
         running = false;
         break;
       case SDL_EVENT_KEY_DOWN:
-        if (event.key.key == SDLK_U && last_move > 0)
+        if (event.key.key == SDLK_U && last_board > 0)
         {
           ended = false;
-          board_unmake_move(&board, &move_history[--last_move]);
+          memcpy(&board, &board_history[--last_board], sizeof(struct board));
         }
         break;
       case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -114,9 +128,8 @@ int main(int argc, char *argv[])
         const struct move *move = NULL;
         for (int i = 0; i < move_count; ++i)
         {
-          if (moves[i].to_rank == rank && moves[i].to_file == file)
+          if (moves[i].rank == rank && moves[i].file == file)
           {
-
             move = &moves[i];
             break;
           }
@@ -145,8 +158,8 @@ int main(int argc, char *argv[])
           play_sound(&move_sound);
         }
         // move piece to new location
-        move_history[last_move++] = *move;
-        board_make_move(&board, move);
+        memcpy(&board_history[last_board++], &board, sizeof(struct board));
+        board_make_move(&board, selected_rank, selected_file, move);
         selected = false;
         enum game_state status = board_status(&board, board.current_color);
         if (status == STATE_MATE)
@@ -171,7 +184,7 @@ int main(int argc, char *argv[])
     }
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     SDL_RenderClear(renderer);
-    board_draw(&board);
+    board_draw(&board, piece_textures);
     if (selected)
     {
       draw_selector(&board, selected_rank, selected_file);
@@ -179,7 +192,7 @@ int main(int argc, char *argv[])
       int move_count = board_get_legal_moves(&board, selected_rank, selected_file, moves);
       for (int i = 0; i < move_count; ++i)
       {
-        board_draw_texture(&board, move_texture, moves[i].to_rank, moves[i].to_file);
+        board_draw_texture(&board, move_texture, moves[i].rank, moves[i].file);
       }
     }
     SDL_RenderPresent(renderer);
