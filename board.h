@@ -27,6 +27,7 @@ struct piece
 {
   enum piece_color color;
   enum piece_type type;
+  bool has_moved;
 };
 
 struct board
@@ -49,6 +50,8 @@ enum move_type
   MOVE_DOUBLE,
   MOVE_CAPTURE,
   MOVE_EN_PASSANT,
+  MOVE_CASTLE_LEFT,
+  MOVE_CASTLE_RIGHT,
 };
 
 struct move
@@ -69,7 +72,7 @@ struct board board_init(SDL_Renderer *renderer, int x, int y, int width, int hei
 void board_draw_texture(const struct board *board, SDL_Texture *texture, int rank, int file);
 void board_draw(const struct board *board, SDL_Texture *textures[12]);
 
-int board_get_pseudo_moves(const struct board *board, int rank, int file, struct move moves[32]);
+int board_get_pseudo_moves(const struct board *board, int rank, int file, struct move moves[32], bool castling);
 void board_make_move(struct board *board, int from_rank, int from_file, const struct move *move);
 
 bool board_in_check(const struct board *board, enum piece_color color);
